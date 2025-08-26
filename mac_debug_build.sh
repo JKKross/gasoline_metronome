@@ -10,4 +10,4 @@ rm -rf ./build/debug/mac_os/*
 clang -std=c99 --debug -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL ./src/lib/raylib/raylib-5.5_macos/lib/libraylib.a ./src/gasoline_metronome.c -o ./build/debug/mac_os/gasoline_metronome
 
 # If there's a NO_COMMIT tag anywhere in the code, we want to know
-rg "@NO_COMMIT" --ignore-case -g "!win_debug_build.bat"
+rg "@NO_COMMIT" --ignore-case -g "!win_debug_build.bat" -g "!mac_debug_build.sh" -g "!linux_debug_build.sh"
