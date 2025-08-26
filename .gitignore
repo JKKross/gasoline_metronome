@@ -1,0 +1,12 @@
+.temp
+_dev_honza.bat
+
+/ext_lib_src/*
+
+/build/debug/windows/*
+/build/debug/mac_os/*
+/build/debug/linux/*
+
+/build/release/windows/*
+/build/release/mac_os/*
+/build/release/linux/*
