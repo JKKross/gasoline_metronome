@@ -108,7 +108,7 @@ All other files should just #include "dumb_lib.h" without the #define.
 
 
 You can #define DUMB_ASSERT(cond) before the #include to avoid using assert.h.
-You can #define DUMB_ALLOC(size), and DUMB_FREE(ptr) to avoid using stdlib.h (malloc & free)
+You can #define ALLOC_CONTEXT, DUMB_ALLOC(context, size), and DUMB_FREE(context, ptr) to avoid using stdlib.h (malloc & free)
 
 ============================================================================ */
 
@@ -168,12 +168,13 @@ extern "C" {
 	#define DUMB_ASSERT(cond) assert(cond)
 #endif
 
-#if defined(DUMB_ALLOC) && defined(DUMB_FREE)
+#if defined(ALLOC_CONTEXT) && defined(DUMB_ALLOC) && defined(DUMB_FREE)
 	/* OK */
-#elif !defined(DUMB_ALLOC) && !defined(DUMB_FREE)
+#elif !defined(ALLOC_CONTEXT) && !defined(DUMB_ALLOC) && !defined(DUMB_FREE)
 	#include <stdlib.h>
-	#define DUMB_ALLOC(size)  malloc(size)
-	#define DUMB_FREE(ptr)    free(ptr)
+	#define ALLOC_CONTEXT              NULL
+	#define DUMB_ALLOC(context, size)  malloc(size)
+	#define DUMB_FREE(context, ptr)    free(ptr)
 #else
 	#error "You must define either both or none of DUMB_ALLOC, DUMB_FREE."
 #endif
@@ -267,27 +268,23 @@ PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity);
 /* --- |MEMORY IMPLEMENTATION| --- */
 
 void
-dumb_memcpy(void *to, void *from, size_t num_bytes)
-{
+dumb_memcpy(void *to, void *from, size_t num_bytes) {
 	size_t i;
 	char *to_char   = (char *) to;
 	char *from_char = (char *) from;
 
-	for (i = 0; i < num_bytes; i++)
-	{
+	for (i = 0; i < num_bytes; i++) {
 		to_char[i] = from_char[i];
 	}
 }
 
 int
-dumb_memcmp(void *a, void *b, size_t num_bytes)
-{
+dumb_memcmp(void *a, void *b, size_t num_bytes) {
 	size_t i;
 	char* aa = (char *) a;
 	char* bb = (char *) b;
 
-	for (i = 0; i < num_bytes; i++)
-	{
+	for (i = 0; i < num_bytes; i++) {
 		if      (aa[i] > bb[i]) { return 1; }
 		else if (aa[i] < bb[i]) { return -1; }
 	}
@@ -299,14 +296,12 @@ dumb_memcmp(void *a, void *b, size_t num_bytes)
 /* --- |ARRAY IMPLEMENTATION| --- */
 
 Dumb_Array
-dumb_array_init(size_t elem_size)
-{
+dumb_array_init(size_t elem_size) {
 	return dumb_array_init_precise(elem_size, DUMB_DEFAULT_ARRAY_SIZE);
 }
 
 Dumb_Array
-dumb_array_init_precise(size_t elem_size, size_t number_of_elems)
-{
+dumb_array_init_precise(size_t elem_size, size_t number_of_elems) {
 	Dumb_Array a;
 
 	if (number_of_elems < 1) { number_of_elems = 1; }
@@ -314,7 +309,7 @@ dumb_array_init_precise(size_t elem_size, size_t number_of_elems)
 	a.count      = 0;
 	a._capacity  = elem_size * number_of_elems;
 	a._elem_size = elem_size;
-	a._elements  = DUMB_ALLOC(a._capacity);
+	a._elements  = DUMB_ALLOC(ALLOC_CONTEXT, a._capacity);
 
 #ifdef DUMB_DEBUG
 	/* @NOTE: Maybe check always? */
@@ -325,8 +320,7 @@ dumb_array_init_precise(size_t elem_size, size_t number_of_elems)
 }
 
 void
-dumb_array_free(Dumb_Array *a)
-{
+dumb_array_free(Dumb_Array *a) {
 	a->_capacity  = 0;
 	a->count      = 0;
 	a->_elem_size = 0;
@@ -336,19 +330,17 @@ dumb_array_free(Dumb_Array *a)
 	DUMB_ASSERT(a->_elements != NULL);
 #endif
 
-	DUMB_FREE(a->_elements);
+	DUMB_FREE(ALLOC_CONTEXT, a->_elements);
 	a->_elements = NULL;
 }
 
 void
-dumb_array_add(Dumb_Array *a, void *elem)
-{
+dumb_array_add(Dumb_Array *a, void *elem) {
 	char *from;
 
-	if ((a->count * a->_elem_size) == a->_capacity)
-	{
+	if ((a->count * a->_elem_size) == a->_capacity) {
 		size_t new_capacity = a->_capacity * 2;
-		void *tmp = DUMB_ALLOC(new_capacity);
+		void *tmp = DUMB_ALLOC(ALLOC_CONTEXT, new_capacity);
 
 #ifdef DUMB_DEBUG
 		/* @NOTE: Maybe check always? */
@@ -356,7 +348,7 @@ dumb_array_add(Dumb_Array *a, void *elem)
 #endif
 
 		dumb_memcpy(tmp, a->_elements, a->_capacity);
-		DUMB_FREE(a->_elements);
+		DUMB_FREE(ALLOC_CONTEXT, a->_elements);
 		a->_elements = tmp;
 		a->_capacity = new_capacity;
 	}
@@ -367,8 +359,7 @@ dumb_array_add(Dumb_Array *a, void *elem)
 }
 
 void *
-dumb_array_get(Dumb_Array *a, size_t index)
-{
+dumb_array_get(Dumb_Array *a, size_t index) {
 	char *result;
 
 #ifdef DUMB_DEBUG
@@ -383,21 +374,19 @@ dumb_array_get(Dumb_Array *a, size_t index)
 /* --- |STRING IMPLEMENTATION| --- */
 
 Dumb_String
-dumb_string_new(void)
-{
+dumb_string_new(void) {
 	return dumb_string_new_precise(DUMB_DEFAULT_STRING_SIZE_BYTES);
 }
 
 Dumb_String
-dumb_string_new_precise(size_t capacity)
-{
+dumb_string_new_precise(size_t capacity) {
 	Dumb_String s;
 
 	if (capacity < 2) { capacity = 2; }
 
 	s.count     = 0;
 	s._capacity = capacity;
-	s.chars     = (char *) DUMB_ALLOC(s._capacity);
+	s.chars     = (char *) DUMB_ALLOC(ALLOC_CONTEXT, s._capacity);
 /*
 	'malloc' doesn't initialize the memory,
 	so we do this to prevent weird interop issues with c strings.
@@ -414,14 +403,12 @@ dumb_string_new_precise(size_t capacity)
 }
 
 Dumb_String
-dumb_string_from(const char *str)
-{
+dumb_string_from(const char *str) {
 	Dumb_String s = dumb_string_new_precise(DUMB_DEFAULT_STRING_SIZE_BYTES);
 
 	size_t i = 0;
 
-	while (str[i] != '\0')
-	{
+	while (str[i] != '\0') {
 		dumb_string_push(&s, str[i]);
 		i++;
 	}
@@ -429,8 +416,7 @@ dumb_string_from(const char *str)
 }
 
 void
-dumb_string_free(Dumb_String *str)
-{
+dumb_string_free(Dumb_String *str) {
 	str->_capacity = 0;
 	str->count     = 0;
 
@@ -439,21 +425,19 @@ dumb_string_free(Dumb_String *str)
 	DUMB_ASSERT(str->chars != NULL);
 #endif
 
-	DUMB_FREE(str->chars);
+	DUMB_FREE(ALLOC_CONTEXT, str->chars);
 	str->chars  = NULL;
 }
 
 void
-dumb_string_push(Dumb_String *str, char c)
-{
+dumb_string_push(Dumb_String *str, char c) {
 /*
 	@NOTE: We do count + 1 because of compatibility with c-style
 	strings, which are ended by '\0'.
 	The count we provide for the end user is just the byte count
 	of the UTF-8 encoded string, so we need to check for +1 here.
 */
-	if ((str->count + 1) == str->_capacity)
-	{
+	if ((str->count + 1) == str->_capacity) {
 		PRIVATE_dumb_string_change_capacity(str, (str->_capacity * 2));
 	}
 	str->chars[str->count] = c;
@@ -462,8 +446,7 @@ dumb_string_push(Dumb_String *str, char c)
 }
 
 char
-dumb_string_pop(Dumb_String *str)
-{
+dumb_string_pop(Dumb_String *str) {
 	char result;
 	size_t index;
 
@@ -479,20 +462,17 @@ dumb_string_pop(Dumb_String *str)
 }
 
 void
-dumb_string_append(Dumb_String *str_a, const char *str_b)
-{
+dumb_string_append(Dumb_String *str_a, const char *str_b) {
 	size_t i = 0;
 
-	while (str_b[i] != '\0')
-	{
+	while (str_b[i] != '\0') {
 /*
 		@NOTE: We do count + 1 because of compatibility with c-style
 		strings, which are ended by '\0'.
 		The count we provide for the end user is just the byte count
 		of the UTF-8 encoded string, so we need to check for +1 here.
 */
-		if ((str_a->count + 1) == str_a->_capacity)
-		{
+		if ((str_a->count + 1) == str_a->_capacity) {
 			PRIVATE_dumb_string_change_capacity(str_a, (str_a->_capacity * 2));
 		}
 		str_a->chars[str_a->count] = str_b[i];
@@ -503,27 +483,22 @@ dumb_string_append(Dumb_String *str_a, const char *str_b)
 }
 
 Dumb_Array
-dumb_string_split_by_char(Dumb_String *str, char c)
-{
+dumb_string_split_by_char(Dumb_String *str, char c) {
 	Dumb_Array  result = dumb_array_init(sizeof(Dumb_String));
 	Dumb_String buf    = dumb_string_new();
 
 	size_t i;
 
-	for (i = 0; i < str->count; i++)
-	{
+	for (i = 0; i < str->count; i++) {
 		char current = str->chars[i];
 
-		if (current == c)
-		{
+		if (current == c) {
 			Dumb_String buf_2 = dumb_string_from(buf.chars);
 			dumb_array_add(&result, &buf_2);
 
 			dumb_string_free(&buf);
 			buf = dumb_string_new();
-		}
-		else
-		{
+		} else {
 			dumb_string_push(&buf, current);
 		}
 	}
@@ -533,8 +508,7 @@ dumb_string_split_by_char(Dumb_String *str, char c)
 }
 
 void
-dumb_string_trim_whitespace(Dumb_String *str)
-{
+dumb_string_trim_whitespace(Dumb_String *str) {
 	void *copy_to;
 	void *copy_from;
 	size_t count;
@@ -543,13 +517,11 @@ dumb_string_trim_whitespace(Dumb_String *str)
 	size_t low_index  = 0;
 	size_t high_index = str->count - 1;
 
-	while ((low_index < str->count) && (str->chars[low_index] <= 0x20))
-	{
+	while ((low_index < str->count) && (str->chars[low_index] <= 0x20)) {
 		low_index++;
 	}
 
-	if (low_index >= str->count)
-	{
+	if (low_index >= str->count) {
 		Dumb_String empty = dumb_string_new();
 
 		dumb_string_free(str);
@@ -557,8 +529,7 @@ dumb_string_trim_whitespace(Dumb_String *str)
 		return;
 	}
 
-	while ((high_index > low_index) && (str->chars[high_index] <= 0x20))
-	{
+	while ((high_index > low_index) && (str->chars[high_index] <= 0x20)) {
 		high_index--;
 	}
 
@@ -578,9 +549,8 @@ dumb_string_trim_whitespace(Dumb_String *str)
 }
 
 void
-PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity)
-{
-	void *tmp = DUMB_ALLOC(new_capacity);
+PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity) {
+	void *tmp = DUMB_ALLOC(ALLOC_CONTEXT, new_capacity);
 
 #ifdef DUMB_DEBUG
 	/* @NOTE: Maybe check always? */
@@ -589,7 +559,7 @@ PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity)
 
 	/* @NOTE: Should this be count? Or Min(new_capacity, str->_capacity)? */
 	dumb_memcpy(tmp, str->chars, str->_capacity);
-	DUMB_FREE(str->chars);
+	DUMB_FREE(ALLOC_CONTEXT, str->chars);
 	str->chars = (char *) tmp;
 	str->_capacity = new_capacity;
 }

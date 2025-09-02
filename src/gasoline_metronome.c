@@ -56,8 +56,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 void tap_tempo(int *tempo);
 void playback(int *should_play, int *tempo);
 
-int main()
-{
+int main() {
 	Color bg_color = GetColor(0x252525FF);
 
 	Rectangle beats_per_bar_minus_button   = { .x = 10,  .y = 10, .width = 40,  .height = 40 };
@@ -92,8 +91,7 @@ int main()
 	GuiLoadStyleGmDefaultStyle();
 	GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
 
-	while (!WindowShouldClose()) // Detect window close button or ESC key
-	{
+	while (!WindowShouldClose()) // Detect window close button or ESC key {
 		SetWindowSize(
 			(show_more ? WINDOW_WIDTH_EXPANDED : WINDOW_WIDTH_NORMAL),
 			(show_more ? WINDOW_HEIGHT_EXPANDED : WINDOW_HEIGHT_NORMAL)
@@ -116,8 +114,7 @@ int main()
 		GuiValueBox(tempo_value_box_rect, NULL, &tempo, MIN_TEMPO, MAX_TEMPO, 1);
 
 		button_clicked = GuiButton(play_pause_button_rect, (is_playing ? "#132#" : "#131#"));
-		if (button_clicked)
-		{
+		if (button_clicked) {
 			is_playing = (is_playing ? 0 : 1);
 			playback(&is_playing, &tempo);
 		}
@@ -152,22 +149,17 @@ int main()
 	return 0;
 }
 
-void tap_tempo(int *tempo)
-{
+void tap_tempo(int *tempo) {
 	// @TODO: Implement
 	printf("Tap tempo tapped!\n");
 	return;
 }
 
-void playback(int *should_play, int *tempo)
-{
+void playback(int *should_play, int *tempo) {
 	// @TODO: Implement
-	if (*should_play)
-	{
+	if (*should_play) {
 		printf("Playing beats at tempo %i\n", *tempo);
-	}
-	else
-	{
+	} else {
 		printf("Stopped playing\n");
 	}
 }
