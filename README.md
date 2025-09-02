@@ -3,3 +3,7 @@
 Gasoline Metronome is (at least for now, subject to change) licensed under the MIT License.
 The same is true for dumb\_lib.
 RayLib, RayGui & RayAudio are licensed under zLib license.
+
+### Style
+
+Use tabs for indentation, spaces for alignment.

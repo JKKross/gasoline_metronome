@@ -91,7 +91,8 @@ int main() {
 	GuiLoadStyleGmDefaultStyle();
 	GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
 
-	while (!WindowShouldClose()) // Detect window close button or ESC key {
+	// Detect window close button or ESC key
+	while (!WindowShouldClose()) {
 		SetWindowSize(
 			(show_more ? WINDOW_WIDTH_EXPANDED : WINDOW_WIDTH_NORMAL),
 			(show_more ? WINDOW_HEIGHT_EXPANDED : WINDOW_HEIGHT_NORMAL)
