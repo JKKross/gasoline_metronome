@@ -51,15 +51,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 	THIS IS A GENERATED FILE, DO NOT CHANGE MANUALLY!!!\n\
 */\n\
 \n\
-typedef struct Sound {\n\
-	char  name[16];\n\
-	u8    num_channels;\n\
-	u32   sample_rate;\n\
-	u32   byte_rate;\n\
-	u16   bits_per_sample;\n\
-	u32   data_size;\n\
-	u8   *data;\n\
-} Sound;\n\
+typedef struct GM_Sound {\n\
+	char           *name;\n\
+	unsigned char   num_channels;\n\
+	unsigned long   sample_rate;\n\
+	unsigned long   byte_rate;\n\
+	unsigned short  bits_per_sample;\n\
+	unsigned long   data_size;\n\
+	unsigned char  *data;\n\
+} GM_Sound;\n\
 \n\
 void\n\
 gm_init_sounds(Dumb_Arena *allocator, Dumb_Array *sounds_array);\n\
@@ -67,7 +67,7 @@ gm_init_sounds(Dumb_Arena *allocator, Dumb_Array *sounds_array);\n\
 void\n\
 gm_init_sounds(Dumb_Arena *arena, Dumb_Array *sounds_array)\n\
 {\n\
-	Sound *sound;\n\n\
+	GM_Sound *gm_sound;\n\n\
 "
 
 typedef char                s8;
@@ -344,54 +344,56 @@ main(int argc, char *argv[])
 
 		Dumb_String tmp_str = dumb_string_create_precise(scratch_arena, 1024);
 
-		dumb_string_append(global_arena, &output, "\t/* Sound no. ");
+		dumb_string_append(global_arena, &output, "\t/* GM_Sound no. ");
 
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", i);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, " */\n");
 
-		dumb_string_append(global_arena, &output, "\tsound = dumb_arena_push(arena, sizeof(Sound));\n\n");
+		dumb_string_append(global_arena, &output, "\tgm_sound = (GM_Sound *)dumb_arena_push(arena, sizeof(GM_Sound));\n\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->name = \"");
-		dumb_string_append(global_arena, &output, (char *)sound_name._chars); // @NOTE(Honza): We have a problem if the name is more than 16 chars.
+		dumb_string_append(global_arena, &output, "\tgm_sound->name = (char *)dumb_arena_push(arena, 64);\n");
+
+		dumb_string_append(global_arena, &output, "\tgm_sound->name = \"");
+		dumb_string_append(global_arena, &output, (char *)sound_name._chars);
 		dumb_string_append(global_arena, &output, "\";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->num_channels = ");
+		dumb_string_append(global_arena, &output, "\tgm_sound->num_channels = ");
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", parsed_file.fmt_chunk.NumChannels);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, ";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->sample_rate = ");
+		dumb_string_append(global_arena, &output, "\tgm_sound->sample_rate = ");
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", parsed_file.fmt_chunk.SampleRate);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, ";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->byte_rate = ");
+		dumb_string_append(global_arena, &output, "\tgm_sound->byte_rate = ");
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", parsed_file.fmt_chunk.ByteRate);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, ";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->bits_per_sample = ");
+		dumb_string_append(global_arena, &output, "\tgm_sound->bits_per_sample = ");
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", parsed_file.fmt_chunk.BitsPerSample);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, ";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->data_size = ");
+		dumb_string_append(global_arena, &output, "\tgm_sound->data_size = ");
 		dumb_string_clear(&tmp_str);
 		sprintf(tmp_str._chars, "%d", parsed_file.data_chunk.SubchunkSize);
 		dumb_string_append(global_arena, &output, tmp_str._chars);
 		dumb_string_append(global_arena, &output, ";\n");
 
-		dumb_string_append(global_arena, &output, "\tsound->data = dumb_arena_push(arena, sound->data_size);\n\n");
+		dumb_string_append(global_arena, &output, "\tgm_sound->data = dumb_arena_push(arena, gm_sound->data_size);\n\n");
 
 		for (int i = 0; i < parsed_file.data_chunk.SubchunkSize; i++)
 		{
-			dumb_string_append(global_arena, &output, "\tsound->data[");
+			dumb_string_append(global_arena, &output, "\tgm_sound->data[");
 
 			dumb_string_clear(&tmp_str);
 			sprintf(tmp_str._chars, "%d", i);
@@ -403,7 +405,7 @@ main(int argc, char *argv[])
 			dumb_string_append(global_arena, &output, tmp_str._chars);
 			dumb_string_append(global_arena, &output, ";\n");
 		}
-		dumb_string_append(global_arena, &output, "\n\tdumb_array_append(arena, sounds_array, sound);\n");
+		dumb_string_append(global_arena, &output, "\n\tdumb_array_append(arena, sounds_array, gm_sound);\n");
 		dumb_string_append(global_arena, &output, "\n");
 	}
 	dumb_string_append(global_arena, &output, "}");
