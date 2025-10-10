@@ -25,7 +25,7 @@ popd
 
 echo\
 REM If there's a NO_COMMIT tag anywhere in the code, we want to know
-rg "@NO_COMMIT" --ignore-case -g "!win_debug_build.bat" -g "!mac_debug_build.sh" -g "!linux_debug_build.sh"
+rg "@NO_COMMIT" --ignore-case -g "!*.bat" -g "!*.sh"
 echo\
 
 REM ...and back to Windows-1252
