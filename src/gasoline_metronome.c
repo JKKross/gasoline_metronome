@@ -41,6 +41,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define DUMB_LIB_IMPLEMENTATION
 #include "./lib/dumb_lib.h"
 
+// Generated default style for the GUI
 #include "gm_default_style.h"
 
 #define MIN_TEMPO 5
@@ -52,11 +53,95 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define WINDOW_WIDTH_EXPANDED  WINDOW_WIDTH_NORMAL
 #define WINDOW_HEIGHT_EXPANDED 330
 
+typedef char                s8;
+typedef short               s16;
+typedef long                s32;
+typedef long long           s64;
+
+typedef unsigned char       u8;
+typedef unsigned short      u16;
+typedef unsigned long       u32;
+typedef unsigned long long  u64;
+
+typedef float               f32;
+typedef double              f64;
+
+void read_file_as_bytes(Dumb_String *filename, Dumb_Array *output_buffer, Dumb_Arena *output_buffer_arena);
+void save_dumb_string_to_file(const char *filename, Dumb_String *file_contents);
 
 void tap_tempo(int *tempo);
 void playback(int *should_play, int *tempo);
 
-int main() {
+void
+read_file_as_bytes(Dumb_String *filename, Dumb_Array *output_buffer, Dumb_Arena *output_buffer_arena)
+{
+	FILE *file;
+	_set_fmode(_O_BINARY);
+	fopen_s(&file, filename->_chars, "r");
+
+	if (file == NULL)
+	{
+		printf("Couldn't read file \"%s\"\n", filename->_chars);
+		fclose(file);
+		return;
+	}
+
+	int bin = getc(file);
+	u8  byte = (u8)bin;
+
+	while (bin != EOF)
+	{
+		dumb_array_push(output_buffer_arena, output_buffer, &byte);
+
+		bin = getc(file);
+		byte = (u8)bin;
+	}
+
+	fclose(file);
+}
+
+void
+save_dumb_string_to_file(const char *filename, Dumb_String *file_contents)
+{
+	FILE *file;
+	fopen_s(&file, filename, "w");
+
+	if (file == NULL)
+	{
+		printf("Couldn't write to file \"%s\"\n", filename);
+		fclose(file);
+		return;
+	}
+	fprintf(file, "%s\n", (char *)file_contents->_chars);
+
+	fclose(file);
+}
+
+void
+tap_tempo(int *tempo)
+{
+	// @TODO: Implement
+	printf("Tap tempo tapped!\n");
+	return;
+}
+
+void
+playback(int *should_play, int *tempo)
+{
+	// @TODO: Implement
+	if (*should_play)
+	{
+		printf("Playing beats at tempo %i\n", *tempo);
+	}
+	else
+	{
+		printf("Stopped playing\n");
+	}
+}
+
+int
+main()
+{
 	Color bg_color = GetColor(0x252525FF);
 
 	Rectangle beats_per_bar_minus_button   = { .x = 10,  .y = 10, .width = 40,  .height = 40 };
@@ -84,6 +169,8 @@ int main() {
 
 	int button_clicked = 0;
 
+	int tap_tempo_tapped = 0;
+
 	InitWindow(WINDOW_WIDTH_NORMAL, WINDOW_HEIGHT_NORMAL, "Gasoline Metronome");
 
 	SetTargetFPS(60);
@@ -92,7 +179,8 @@ int main() {
 	GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
 
 	// Detect window close button or ESC key
-	while (!WindowShouldClose()) {
+	while (!WindowShouldClose())
+	{
 		SetWindowSize(
 			(show_more ? WINDOW_WIDTH_EXPANDED : WINDOW_WIDTH_NORMAL),
 			(show_more ? WINDOW_HEIGHT_EXPANDED : WINDOW_HEIGHT_NORMAL)
@@ -115,7 +203,8 @@ int main() {
 		GuiValueBox(tempo_value_box_rect, NULL, &tempo, MIN_TEMPO, MAX_TEMPO, 1);
 
 		button_clicked = GuiButton(play_pause_button_rect, (is_playing ? "#132#" : "#131#"));
-		if (button_clicked) {
+		if (button_clicked)
+		{
 			is_playing = (is_playing ? 0 : 1);
 			playback(&is_playing, &tempo);
 		}
@@ -125,7 +214,12 @@ int main() {
 		if (button_clicked) { show_more = (show_more ? 0 : 1); }
 
 		button_clicked = GuiButton(tap_tempo_button_rect, "Tap tempo");
-		if (button_clicked) { tap_tempo(&tempo); }
+		if (button_clicked || IsKeyDown(KEY_SPACE)) { tap_tempo_tapped = 1; }
+		if (tap_tempo_tapped && IsKeyUp(KEY_SPACE))
+		{
+			tap_tempo_tapped = 0;
+			tap_tempo(&tempo);
+		}
 
 		GuiSetStyle(DEFAULT, TEXT_SIZE, 23);
 		GuiLabel(beats_per_bar_label, "No. of beats");
@@ -148,19 +242,4 @@ int main() {
 	GuiLoadStyleDefault();
 	CloseWindow();
 	return 0;
-}
-
-void tap_tempo(int *tempo) {
-	// @TODO: Implement
-	printf("Tap tempo tapped!\n");
-	return;
-}
-
-void playback(int *should_play, int *tempo) {
-	// @TODO: Implement
-	if (*should_play) {
-		printf("Playing beats at tempo %i\n", *tempo);
-	} else {
-		printf("Stopped playing\n");
-	}
 }
