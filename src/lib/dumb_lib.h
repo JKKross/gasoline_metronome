@@ -1,10 +1,13 @@
 /* ============================================================================
 
 dumb_lib.h - something like my personal "standard library"/"C extension".
+dumb_memset, dumb_memcpy, dumb_memcmp, Dumb_Arena, Dumb_Array & Dumb_String.
+This library depends on stdlib.h - for malloc/calloc & free only.
+If you want to know more, see: https://github.com/JKKross/dumb_lib/
 
 ===============================================================================
 
-version 0.5.0
+version 0.5.2
 Copyright © 2025 Honza Kříž
 
 https://github.com/JKKross
@@ -16,10 +19,7 @@ https://x.com/honza_kriz_bass
 	------------------
 
 	|SECTION| - LICENSE
-	|SECTION| - README
-	|SECTION| - NOTES
 	|SECTION| - DOCUMENTATION
-	|SECTION| - COMPILE OPTIONS
 	|SECTION| - COMPILE CHECKS
 	|SECTION| - INCLUDES
 	|SECTION| - DECLARATIONS
@@ -63,67 +63,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 ===============================================================================
 
-	|SECTION| - README
-	----------------------------
-
-This is a single-file (or "header-only") MIT licensed library for C/C++,
-meant primarily for:
-	A) My personal use, as a "C extension"/my own "standard library"
-	B) My own learning purposes
-
-That means that the library is still very much "under construction",
-and also, that I will most likely not accept any pull requests to dumb\_lib.h.
-(I may change my mind on that, obviously.
-Pull requests adding tests, typo-fixes etc.
-are welcome & very much appreciated, though.)
-
-Thus, I ask you: if you want to use it, READ THROUGH THE CODE, VALIDATE IT,
-TEST IT OUT YOURSELF AND TAKE THE "NO WARRANTY..." PART OF THE LICENSE SERIOUSLY.
-
-(For this reason, I may never take this lib over the v1.0 mark - we'll see)
-
-===============================================================================
-
-	|SECTION| - NOTES
-	----------------------------
-
-- Originally, I pretty much tried to copy the stb libraries style
-(i.e. "define your own allocator" etc.), but since this library is meant
-basically just for my own use, I decided to make it more opinionated.
-
-Once again, that basically means: DO NOT USE THIS LIBRARY!
-Of course you are free to do so, or to read through the source,
-yank the parts you like out etc.
-
-- If you're wondering why there are no "//" comments, it's because they are not part
-of the C89 standard.
-For rationale to comply with C89 see [Dependable C](https://www.dependablec.org/)
-
-- If you are wondering why I decided to use single-header style for the library, see
-[Sean Barrett's explanation](https://github.com/nothings/stb?tab=readme-ov-file#why-single-file-headers)
-
-===============================================================================
-
 	|SECTION| - DOCUMENTATION
 	----------------------------
 
-You MUST '#define DUMB_LIB_IMPLEMENTATION'
+Most "documentation" for this library is (at least for now) the code itself.
+But a few notes:
+
+- 1)
+You _MUST_ '#define DUMB_LIB_IMPLEMENTATION'
 in EXACTLY _one_ C or C++ file that includes this header, BEFORE the
 include, like this:
 
-   #define DUMB_LIB_IMPLEMENTATION
-   #include "dumb_lib.h"
+	#define DUMB_LIB_IMPLEMENTATION
+	#include "dumb_lib.h"
 
 All other files should just #include "dumb_lib.h" without the #define.
 
+- 2)
+You can '#define DUMB_DEBUG', which turns on DUMB_ASSERT().
+DUMB_ASSERT() does bounds checking on array access &
+makes sure you got valid memory from dumb_arena_create().
+Make sure you define it before including dumb_lib.h, like this:
+
+	#define DUMB_DEBUG
+	#define DUMB_LIB_IMPLEMENTATION
+	#include "dumb_lib.h"
+
 ============================================================================ */
-
-/*
-	|SECTION| - COMPILE OPTIONS
-	---------------------------
-*/
-
-#define DUMB_DEBUG 1
 
 /*
 	|SECTION| - COMPILE CHECKS
@@ -135,7 +101,7 @@ All other files should just #include "dumb_lib.h" without the #define.
 If you wish to proceed, read through the source, run the tests & make sure everything works correctly!
 #endif
 
-#if !(defined(_WIN32) || defined(__linux__))
+#if !(defined(_WIN64) || defined(__linux__))
 	#error THIS LIBRARY HAS NOT BEEN TESTED ON THIS PLATFORM! \
 If you wish to proceed, read through the source, run the tests & make sure everything works correctly!
 #endif
@@ -184,6 +150,13 @@ extern "C" {
 
 /* --- |TYPES| --- */
 
+typedef enum Dumb_Comparison_Result
+{
+	A_GREATER_THEN_B = 1,
+	A_EQUALS_B       = 0,
+	A_LESS_THEN_B    = -1,
+} Dumb_Comparison_Result;
+
 typedef struct Dumb_Arena Dumb_Arena;
 
 struct Dumb_Arena {
@@ -199,7 +172,7 @@ typedef struct Dumb_Array {
 	size_t         _capacity;
 	size_t         _elem_size;
 	unsigned char *_elements;
-} Dumb_Array; /* @NOTE(Honza): Switch to macro approach? */
+} Dumb_Array;
 
 typedef struct Dumb_String {
 	size_t         _count;
@@ -209,9 +182,9 @@ typedef struct Dumb_String {
 
 /* --- |MEMORY| --- */
 
-void dumb_memcpy(void *to, void *from, size_t num_bytes);
-int  dumb_memcmp(void *a, void *b, size_t num_bytes);
-void dumb_memset(void *memory, unsigned char byte, size_t num_bytes);
+void                   dumb_memcpy(void *to, void *from, size_t num_bytes);
+Dumb_Comparison_Result dumb_memcmp(void *a, void *b, size_t num_bytes);
+void                   dumb_memset(void *memory, unsigned char byte, size_t num_bytes);
 
 Dumb_Arena *dumb_arena_create(size_t size);
 void        dumb_arena_destroy(Dumb_Arena *arena);
@@ -229,16 +202,16 @@ void       *dumb_array_get(Dumb_Array *a, size_t index);
 
 /* --- |STRING| --- */
 
-Dumb_String   dumb_string_create(Dumb_Arena *arena);
-Dumb_String   dumb_string_create_precise(Dumb_Arena *arena, size_t capacity);
-Dumb_String   dumb_string_from(Dumb_Arena *arena, const char *str);
-void          dumb_string_clear(Dumb_String *str);
-void          dumb_string_push(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
-unsigned char dumb_string_pop(Dumb_String *str);
-void          dumb_string_append(Dumb_Arena *arena, Dumb_String *str_a, const char *str_b);
-Dumb_Array    dumb_string_split_by_char(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
-void          dumb_string_trim_whitespace(Dumb_String *str);
-int           dumb_string_compare(Dumb_String *str_a, Dumb_String *str_b);
+Dumb_String            dumb_string_create(Dumb_Arena *arena);
+Dumb_String            dumb_string_create_precise(Dumb_Arena *arena, size_t capacity);
+Dumb_String            dumb_string_from(Dumb_Arena *arena, const char *str);
+void                   dumb_string_clear(Dumb_String *str);
+void                   dumb_string_push(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
+unsigned char          dumb_string_pop(Dumb_String *str);
+void                   dumb_string_append(Dumb_Arena *arena, Dumb_String *str_a, const char *str_b);
+Dumb_Array             dumb_string_split_by_char(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
+void                   dumb_string_trim_whitespace(Dumb_String *str);
+Dumb_Comparison_Result dumb_string_compare(Dumb_String *str_a, Dumb_String *str_b);
 
 void PRIVATE_dumb_string_change_capacity(Dumb_Arena *arena, Dumb_String *str, size_t new_capacity);
 
@@ -264,7 +237,7 @@ dumb_memcpy(void *to, void *from, size_t num_bytes)
 	}
 }
 
-int
+Dumb_Comparison_Result
 dumb_memcmp(void *a, void *b, size_t num_bytes)
 {
 	size_t i;
@@ -273,10 +246,10 @@ dumb_memcmp(void *a, void *b, size_t num_bytes)
 
 	for (i = 0; i < num_bytes; i++)
 	{
-		if      (aa[i] > bb[i]) { return 1; }
-		else if (aa[i] < bb[i]) { return -1; }
+		if      (aa[i] > bb[i]) { return A_GREATER_THEN_B; }
+		else if (aa[i] < bb[i]) { return A_LESS_THEN_B; }
 	}
-	return 0;
+	return A_EQUALS_B;
 }
 
 void
@@ -457,7 +430,6 @@ dumb_array_create_precise(Dumb_Arena *arena, size_t elem_size, size_t number_of_
 	a._elem_size = elem_size;
 	a._elements  = (unsigned char *)dumb_arena_push(arena, a._capacity);
 
-	/* @NOTE(Honza): Maybe check always? */
 	DUMB_ASSERT(a._elements != NULL)
 
 	return a;
@@ -531,7 +503,6 @@ dumb_array_get(Dumb_Array *a, size_t index)
 {
 	unsigned char *result;
 
-	/* @NOTE(Honza): Maybe check always? */
 	DUMB_ASSERT(index < a->_count)
 
 	result = a->_elements + (index * a->_elem_size);
@@ -556,14 +527,8 @@ dumb_string_create_precise(Dumb_Arena *arena, size_t capacity)
 	s._count     = 0;
 	s._capacity  = capacity;
 	s._chars     = (unsigned char *)dumb_arena_push(arena, s._capacity);
-/*
-	'malloc' doesn't initialize the memory,
-	so we do this to prevent weird interop issues with c strings.
-	Still costs a few instructions, but it should be less than 'calloc'.
-*/
 	s._chars[0]  = '\0';
 
-	/* @NOTE(Honza): Maybe check always? */
 	DUMB_ASSERT(s._chars != NULL)
 
 	return s;
@@ -719,25 +684,25 @@ Due to the nature of how UTF-8 strings can be encoded,
 two strings that appear identical to the reader may result
 in the function returning a non-zero value.
  */
-int
+Dumb_Comparison_Result
 dumb_string_compare(Dumb_String *str_a, Dumb_String *str_b)
 {
 	/* @NOTE(Honza): Should this function behave more like
 	   string comparison in Swift's stdlib? */
-	int result;
+	Dumb_Comparison_Result result;
 
 	if (str_a->_count > str_b->_count)
 	{
 		result = dumb_memcmp((void *)str_a->_chars, (void *)str_b->_chars, str_b->_count);
 
-		if (result == 0) { return 1; }
+		if (result == 0) { return A_GREATER_THEN_B; }
 		else             { return result; }
 	}
 	else if (str_a->_count < str_b->_count)
 	{
 		result = dumb_memcmp((void *)str_a->_chars, (void *)str_b->_chars, str_a->_count);
 
-		if (result == 0) { return -1; }
+		if (result == 0) { return A_LESS_THEN_B; }
 		else             { return result; }
 	}
 	else
@@ -751,7 +716,6 @@ PRIVATE_dumb_string_change_capacity(Dumb_Arena *arena, Dumb_String *str, size_t 
 {
 	void *tmp = dumb_arena_push(arena, new_capacity);
 
-	/* @NOTE(Honza): Maybe check always? */
 	DUMB_ASSERT(tmp != NULL)
 
 	/* @NOTE(Honza): Should this be count? Or Min(new_capacity, str->_capacity)? */
