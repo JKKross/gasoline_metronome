@@ -19,7 +19,7 @@ REM - /nologo removes annoying banner
 REM - /Zi produces debug info
 REM - /utf-8 - set source and execution charset to UTF-8
 REM - /validate-charset - validate UTF-8 files
-cl /nologo /Zi /utf-8 /validate-charset gdi32.lib msvcrt.lib raylib.lib winmm.lib user32.lib shell32.lib ..\..\..\src\gasoline_metronome.c -I..\..\..\src\lib\raylib\raylib-5.5_win64_msvc16\include /link /libpath:..\..\..\src\lib\raylib\raylib-5.5_win64_msvc16\lib /NODEFAULTLIB:libcmt
+cl /nologo /Zi /utf-8 /validate-charset gdi32.lib msvcrt.lib raylib.lib winmm.lib user32.lib shell32.lib ..\..\..\src\gasoline_metronome.c ..\..\..\src\timing.c -I..\..\..\src\lib\raylib\raylib-5.5_win64_msvc16\include /link /libpath:..\..\..\src\lib\raylib\raylib-5.5_win64_msvc16\lib /NODEFAULTLIB:libcmt
 
 popd
 

@@ -1,6 +1,6 @@
 /*
 
-@TODO: Description etc.
+@TODO(Honza): Description etc.
 
 =====================================================================
 
@@ -31,18 +31,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 #include <stdio.h>
+#include <stdint.h>
 
-#include "./lib/raylib/raylib.h"
+#include "lib/raylib/raylib.h"
 
 #define RAYGUI_VALUEBOX_MAX_CHARS 3
 #define RAYGUI_IMPLEMENTATION
-#include "./lib/raygui.h"
+#include "lib/raygui.h"
 
 #define DUMB_LIB_IMPLEMENTATION
-#include "./lib/dumb_lib.h"
+#include "lib/dumb_lib.h"
 
 // Generated default style for the GUI
 #include "gm_default_style.h"
+
+#include "timing.h"
 
 #define MIN_TEMPO 5
 #define MAX_TEMPO 500
@@ -53,77 +56,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 #define WINDOW_WIDTH_EXPANDED  WINDOW_WIDTH_NORMAL
 #define WINDOW_HEIGHT_EXPANDED 330
 
-typedef char                s8;
-typedef short               s16;
-typedef long                s32;
-typedef long long           s64;
-
-typedef unsigned char       u8;
-typedef unsigned short      u16;
-typedef unsigned long       u32;
-typedef unsigned long long  u64;
-
-typedef float               f32;
-typedef double              f64;
-
-void read_file_as_bytes(Dumb_String *filename, Dumb_Array *output_buffer, Dumb_Arena *output_buffer_arena);
-void save_dumb_string_to_file(const char *filename, Dumb_String *file_contents);
-
-void tap_tempo(int *tempo);
 void playback(int *should_play, int *tempo);
-
-void
-read_file_as_bytes(Dumb_String *filename, Dumb_Array *output_buffer, Dumb_Arena *output_buffer_arena)
-{
-	FILE *file;
-	_set_fmode(_O_BINARY);
-	fopen_s(&file, filename->_chars, "r");
-
-	if (file == NULL)
-	{
-		printf("Couldn't read file \"%s\"\n", filename->_chars);
-		fclose(file);
-		return;
-	}
-
-	int bin = getc(file);
-	u8  byte = (u8)bin;
-
-	while (bin != EOF)
-	{
-		dumb_array_push(output_buffer_arena, output_buffer, &byte);
-
-		bin = getc(file);
-		byte = (u8)bin;
-	}
-
-	fclose(file);
-}
-
-void
-save_dumb_string_to_file(const char *filename, Dumb_String *file_contents)
-{
-	FILE *file;
-	fopen_s(&file, filename, "w");
-
-	if (file == NULL)
-	{
-		printf("Couldn't write to file \"%s\"\n", filename);
-		fclose(file);
-		return;
-	}
-	fprintf(file, "%s\n", (char *)file_contents->_chars);
-
-	fclose(file);
-}
-
-void
-tap_tempo(int *tempo)
-{
-	// @TODO: Implement
-	printf("Tap tempo tapped!\n");
-	return;
-}
 
 void
 playback(int *should_play, int *tempo)
@@ -159,6 +92,8 @@ main()
 	Rectangle tap_tempo_button_rect  = { .x = 160, .y = 80, .width = 150, .height = 40 };
 
 	int tempo = 80;
+
+	int64_t previous_milisecond_count = get_miliseconds();
 
 	int beats_per_bar = 4;
 	int beats_per_bar_minus_clicked = 0;
@@ -199,7 +134,7 @@ main()
 		button_clicked = GuiButton(beats_per_bar_plus_button, "+");
 		if (button_clicked && (beats_per_bar < 32)) { beats_per_bar += 1; }
 
-		// @TODO: MIN_TEMPO & MAX_TEMPO are not working.
+		// @TODO(Honza): MIN_TEMPO & MAX_TEMPO are not working.
 		GuiValueBox(tempo_value_box_rect, NULL, &tempo, MIN_TEMPO, MAX_TEMPO, 1);
 
 		button_clicked = GuiButton(play_pause_button_rect, (is_playing ? "#132#" : "#131#"));
@@ -218,7 +153,16 @@ main()
 		if (tap_tempo_tapped && IsKeyUp(KEY_SPACE))
 		{
 			tap_tempo_tapped = 0;
-			tap_tempo(&tempo);
+
+			int64_t current_millisecond_count = get_miliseconds();
+
+			int tapped_tempo = 60 * 1000 / (int)(current_millisecond_count - previous_milisecond_count);
+
+
+			if (tapped_tempo > MAX_TEMPO)      { tempo = MAX_TEMPO; }
+			else if (tapped_tempo > MIN_TEMPO) { tempo = tapped_tempo; }
+
+			previous_milisecond_count = current_millisecond_count;
 		}
 
 		GuiSetStyle(DEFAULT, TEXT_SIZE, 23);
@@ -241,5 +185,6 @@ main()
 */
 	GuiLoadStyleDefault();
 	CloseWindow();
+
 	return 0;
 }
