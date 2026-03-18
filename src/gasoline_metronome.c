@@ -96,15 +96,16 @@ main()
 	int64_t previous_milisecond_count = get_miliseconds();
 
 	int beats_per_bar = 4;
-	int beats_per_bar_minus_clicked = 0;
-	int beats_per_bar_plus_clicked  = 0;
 
 	int is_playing = 0;
 	int show_more = 0;
 
 	int button_clicked = 0;
 
-	int tap_tempo_tapped = 0;
+	int beats_per_bar_minus_clicked = 0;
+	int beats_per_bar_plus_clicked  = 0;
+	int tap_tempo_button_clicked    = 0;
+	int play_pause_button_clicked   = 0;
 
 	InitWindow(WINDOW_WIDTH_NORMAL, WINDOW_HEIGHT_NORMAL, "Gasoline Metronome");
 
@@ -127,19 +128,48 @@ main()
 		GuiSetStyle(DEFAULT, TEXT_SIZE, 31);
 
 		button_clicked = GuiButton(beats_per_bar_minus_button, "-");
-		if (button_clicked && (beats_per_bar > 1)) { beats_per_bar -= 1; }
+		if ((beats_per_bar > 1) && (button_clicked             ||
+		                            IsKeyDown(KEY_KP_SUBTRACT) ||
+                        		    IsKeyDown(KEY_MINUS)       ||
+                        		    IsKeyDown(KEY_LEFT)))
+		{
+			beats_per_bar_minus_clicked = 1;
+		}
+		if (beats_per_bar_minus_clicked && (IsKeyUp(KEY_KP_SUBTRACT) &&
+		                                    IsKeyUp(KEY_MINUS)       &&
+		                                    IsKeyUp(KEY_LEFT)))
+		{
+			beats_per_bar_minus_clicked = 0;
+			beats_per_bar -= 1;
+		}
 
 		GuiValueBox(beats_per_bar_value_box_rect, NULL, &beats_per_bar, 1, 32, 0);
 
 		button_clicked = GuiButton(beats_per_bar_plus_button, "+");
-		if (button_clicked && (beats_per_bar < 32)) { beats_per_bar += 1; }
+		if ((beats_per_bar < 32) && (button_clicked        ||
+		                             IsKeyDown(KEY_KP_ADD) ||
+		                             IsKeyDown(KEY_EQUAL)  ||
+		                             IsKeyDown(KEY_RIGHT)))
+		{
+			beats_per_bar_plus_clicked = 1;
+		}
+		if (beats_per_bar_plus_clicked && (IsKeyUp(KEY_KP_ADD) &&
+		                                   IsKeyUp(KEY_EQUAL)  &&
+		                                   IsKeyUp(KEY_RIGHT)))
+		{
+			beats_per_bar_plus_clicked = 0;
+			beats_per_bar += 1;
+		}
 
 		// @TODO(Honza): MIN_TEMPO & MAX_TEMPO are not working.
 		GuiValueBox(tempo_value_box_rect, NULL, &tempo, MIN_TEMPO, MAX_TEMPO, 1);
 
 		button_clicked = GuiButton(play_pause_button_rect, (is_playing ? "#132#" : "#131#"));
-		if (button_clicked)
+		if (button_clicked || IsKeyDown(KEY_SPACE) || IsKeyDown(KEY_P)) { play_pause_button_clicked = 1; }
+		if (play_pause_button_clicked && IsKeyUp(KEY_SPACE) && IsKeyUp(KEY_P))
 		{
+			play_pause_button_clicked = 0;
+
 			is_playing = (is_playing ? 0 : 1);
 			playback(&is_playing, &tempo);
 		}
@@ -149,17 +179,16 @@ main()
 		if (button_clicked) { show_more = (show_more ? 0 : 1); }
 
 		button_clicked = GuiButton(tap_tempo_button_rect, "Tap tempo");
-		if (button_clicked || IsKeyDown(KEY_SPACE)) { tap_tempo_tapped = 1; }
-		if (tap_tempo_tapped && IsKeyUp(KEY_SPACE))
+		if (button_clicked || IsKeyDown(KEY_T)) { tap_tempo_button_clicked = 1; }
+		if (tap_tempo_button_clicked && IsKeyUp(KEY_T))
 		{
-			tap_tempo_tapped = 0;
+			tap_tempo_button_clicked = 0;
 
 			int64_t current_millisecond_count = get_miliseconds();
 
 			int tapped_tempo = 60 * 1000 / (int)(current_millisecond_count - previous_milisecond_count);
 
-
-			if (tapped_tempo > MAX_TEMPO)      { tempo = MAX_TEMPO; }
+			if      (tapped_tempo > MAX_TEMPO) { tempo = MAX_TEMPO; }
 			else if (tapped_tempo > MIN_TEMPO) { tempo = tapped_tempo; }
 
 			previous_milisecond_count = current_millisecond_count;
@@ -168,7 +197,6 @@ main()
 		GuiSetStyle(DEFAULT, TEXT_SIZE, 23);
 		GuiLabel(beats_per_bar_label, "No. of beats");
 		GuiLabel(tempo_label, "BPM");
-
 
 		EndDrawing();
 	}
