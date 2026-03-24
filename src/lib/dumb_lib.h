@@ -2,12 +2,12 @@
 
 dumb_lib.h - something like my personal "standard library"/"C extension".
 dumb_memset, dumb_memcpy, dumb_memcmp, Dumb_Arena, Dumb_Array & Dumb_String.
-This library depends on stdlib.h - for malloc/calloc & free only.
+This library depends on stdlib.h - for calloc & free only.
 If you want to know more, see: https://github.com/JKKross/dumb_lib/
 
 ===============================================================================
 
-version 0.5.2
+version 0.6.0
 Copyright © 2025 Honza Kříž
 
 https://github.com/JKKross
@@ -111,7 +111,7 @@ If you wish to proceed, read through the source, run the tests & make sure every
 	--------------------
 */
 
-/* @NOTE(Honza): For malloc/calloc & free only! */
+/* @NOTE(Honza): For calloc & free only! */
 #include <stdlib.h>
 
 /*
@@ -143,11 +143,6 @@ extern "C" {
 	#define DUMB_ASSERT(condition)
 #endif
 
-#define DUMB_KB(n)  (n * 1024)
-#define DUMB_MB(n)  (n * 1048576)
-#define DUMB_GB(n)  (n * 1073741824)
-#define DUMB_TB(n)  (n * 1099511627776)
-
 /* --- |TYPES| --- */
 
 typedef enum Dumb_Comparison_Result
@@ -159,7 +154,8 @@ typedef enum Dumb_Comparison_Result
 
 typedef struct Dumb_Arena Dumb_Arena;
 
-struct Dumb_Arena {
+struct Dumb_Arena
+{
 	Dumb_Arena    *_previous; /* Set to NULL on the very first arena in chain. */
 	Dumb_Arena    *_current;  /* Set to NULL on all arenas except the very first one in chain. */
 	size_t         _capacity;
@@ -167,17 +163,21 @@ struct Dumb_Arena {
 	unsigned char *_memory;
 };
 
-typedef struct Dumb_Array {
+typedef struct Dumb_Array
+{
 	size_t         _count;
 	size_t         _capacity;
 	size_t         _elem_size;
 	unsigned char *_elements;
+	Dumb_Arena    *_backing_storage;
 } Dumb_Array;
 
-typedef struct Dumb_String {
+typedef struct Dumb_String
+{
 	size_t         _count;
 	size_t         _capacity;
 	unsigned char *_chars;
+	Dumb_Arena    *_backing_storage;
 } Dumb_String;
 
 /* --- |MEMORY| --- */
@@ -196,9 +196,9 @@ void        dumb_arena_pop(Dumb_Arena *arena, size_t size);
 Dumb_Array  dumb_array_create(Dumb_Arena *arena, size_t elem_size);
 Dumb_Array  dumb_array_create_precise(Dumb_Arena *arena, size_t elem_size, size_t number_of_elems);
 void        dumb_array_clear(Dumb_Array *array);
-void        dumb_array_push(Dumb_Arena *arena, Dumb_Array *a, void *new_elem);
-void        dumb_array_pop(Dumb_Array *arr, unsigned char *ret_buf);
-void       *dumb_array_get(Dumb_Array *a, size_t index);
+void        dumb_array_push(Dumb_Array *array, void *new_elem);
+void        dumb_array_pop(Dumb_Array *array, unsigned char *ret_buf);
+void       *dumb_array_get(Dumb_Array *array, size_t index);
 
 /* --- |STRING| --- */
 
@@ -206,14 +206,14 @@ Dumb_String            dumb_string_create(Dumb_Arena *arena);
 Dumb_String            dumb_string_create_precise(Dumb_Arena *arena, size_t capacity);
 Dumb_String            dumb_string_from(Dumb_Arena *arena, const char *str);
 void                   dumb_string_clear(Dumb_String *str);
-void                   dumb_string_push(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
+void                   dumb_string_push(Dumb_String *str, unsigned char c);
 unsigned char          dumb_string_pop(Dumb_String *str);
-void                   dumb_string_append(Dumb_Arena *arena, Dumb_String *str_a, const char *str_b);
+void                   dumb_string_append(Dumb_String *str_a, const char *str_b);
 Dumb_Array             dumb_string_split_by_char(Dumb_Arena *arena, Dumb_String *str, unsigned char c);
 void                   dumb_string_trim_whitespace(Dumb_String *str);
 Dumb_Comparison_Result dumb_string_compare(Dumb_String *str_a, Dumb_String *str_b);
 
-void PRIVATE_dumb_string_change_capacity(Dumb_Arena *arena, Dumb_String *str, size_t new_capacity);
+void PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity);
 
 /*
 	|SECTION| - IMPLEMENTATION
@@ -228,8 +228,11 @@ void
 dumb_memcpy(void *to, void *from, size_t num_bytes)
 {
 	size_t i;
-	unsigned char *to_char   = (unsigned char *) to;
-	unsigned char *from_char = (unsigned char *) from;
+	unsigned char *to_char;
+	unsigned char *from_char;
+
+	to_char   = (unsigned char *) to;
+	from_char = (unsigned char *) from;
 
 	for (i = 0; i < num_bytes; i++)
 	{
@@ -241,8 +244,11 @@ Dumb_Comparison_Result
 dumb_memcmp(void *a, void *b, size_t num_bytes)
 {
 	size_t i;
-	unsigned char *aa = (unsigned char *) a;
-	unsigned char *bb = (unsigned char *) b;
+	unsigned char *aa;
+	unsigned char *bb;
+
+	aa = (unsigned char *) a;
+	bb = (unsigned char *) b;
 
 	for (i = 0; i < num_bytes; i++)
 	{
@@ -425,10 +431,12 @@ dumb_array_create_precise(Dumb_Arena *arena, size_t elem_size, size_t number_of_
 
 	if (number_of_elems < 1) { number_of_elems = 1; }
 
-	a._count      = 0;
-	a._capacity  = elem_size * number_of_elems;
-	a._elem_size = elem_size;
-	a._elements  = (unsigned char *)dumb_arena_push(arena, a._capacity);
+	a._count           = 0;
+	a._capacity        = elem_size * number_of_elems;
+	a._elem_size       = elem_size;
+	a._backing_storage = arena;
+
+	a._elements  = (unsigned char *)dumb_arena_push(a._backing_storage, a._capacity);
 
 	DUMB_ASSERT(a._elements != NULL)
 
@@ -443,19 +451,19 @@ dumb_array_clear(Dumb_Array *array)
 }
 
 void
-dumb_array_push(Dumb_Arena *arena, Dumb_Array *a, void *new_elem)
+dumb_array_push(Dumb_Array *array, void *new_elem)
 {
 	unsigned char *new_elem_destination;
 
 	size_t  new_capacity;
 	unsigned char   *tmp;
 
-	if ((a->_count * a->_elem_size) == a->_capacity)
+	if ((array->_count * array->_elem_size) == array->_capacity)
 	{
-		new_capacity = a->_capacity * 2;
-		tmp = (unsigned char *)dumb_arena_push(arena, new_capacity);
+		new_capacity = array->_capacity * 2;
+		tmp = (unsigned char *)dumb_arena_push(array->_backing_storage, new_capacity);
 
-		dumb_memcpy(tmp, a->_elements, a->_capacity);
+		dumb_memcpy(tmp, array->_elements, array->_capacity);
 		/*
 		   @NOTE(Honza): This obviously leaks memory.
 		   In quick & dirty tools working on small data,
@@ -467,12 +475,12 @@ dumb_array_push(Dumb_Arena *arena, Dumb_Array *a, void *new_elem)
 		   what they're doing, and not allocate in their
 		   persistent arena in cases when the data can grow arbitrarily...
 		*/
-		a->_elements = tmp;
-		a->_capacity = new_capacity;
+		array->_elements = tmp;
+		array->_capacity = new_capacity;
 	}
-	new_elem_destination = a->_elements + (a->_count * a->_elem_size);
-	dumb_memcpy(new_elem_destination, new_elem, a->_elem_size);
-	a->_count++;
+	new_elem_destination = array->_elements + (array->_count * array->_elem_size);
+	dumb_memcpy(new_elem_destination, new_elem, array->_elem_size);
+	array->_count++;
 }
 
 /*
@@ -480,7 +488,7 @@ dumb_array_push(Dumb_Arena *arena, Dumb_Array *a, void *new_elem)
    of at least the size of the array element!
 */
 void
-dumb_array_pop(Dumb_Array *arr, unsigned char *ret_buf)
+dumb_array_pop(Dumb_Array *array, unsigned char *ret_buf)
 {
 	unsigned char *elem_ptr;
 
@@ -488,24 +496,24 @@ dumb_array_pop(Dumb_Array *arr, unsigned char *ret_buf)
 	   @NOTE(Honza): Should this crash?
 	   Or fill ret_buf with 0xCDCDCDCD or something?
 	*/
-	if (arr->_count == 0) { return; }
+	if (array->_count == 0) { return; }
 
-	arr->_count--;
+	array->_count--;
 
-	elem_ptr = arr->_elements + (arr->_count * arr->_elem_size);
-	dumb_memcpy(ret_buf, elem_ptr, arr->_elem_size);
+	elem_ptr = array->_elements + (array->_count * array->_elem_size);
+	dumb_memcpy(ret_buf, elem_ptr, array->_elem_size);
 
-	dumb_memset(elem_ptr, 0, arr->_elem_size);
+	dumb_memset(elem_ptr, 0, array->_elem_size);
 }
 
 void *
-dumb_array_get(Dumb_Array *a, size_t index)
+dumb_array_get(Dumb_Array *array, size_t index)
 {
 	unsigned char *result;
 
-	DUMB_ASSERT(index < a->_count)
+	DUMB_ASSERT(index < array->_count)
 
-	result = a->_elements + (index * a->_elem_size);
+	result = array->_elements + (index * array->_elem_size);
 	return (void *) result;
 }
 
@@ -524,10 +532,12 @@ dumb_string_create_precise(Dumb_Arena *arena, size_t capacity)
 
 	if (capacity < 2) { capacity = 2; }
 
-	s._count     = 0;
-	s._capacity  = capacity;
-	s._chars     = (unsigned char *)dumb_arena_push(arena, s._capacity);
-	s._chars[0]  = '\0';
+	s._count           = 0;
+	s._capacity        = capacity;
+	s._backing_storage = arena;
+
+	s._chars    = (unsigned char *)dumb_arena_push(s._backing_storage, s._capacity);
+	s._chars[0] = '\0';
 
 	DUMB_ASSERT(s._chars != NULL)
 
@@ -537,13 +547,15 @@ dumb_string_create_precise(Dumb_Arena *arena, size_t capacity)
 Dumb_String
 dumb_string_from(Dumb_Arena *arena, const char *str)
 {
-	Dumb_String s = dumb_string_create_precise(arena, DUMB_DEFAULT_STRING_SIZE_BYTES);
+	size_t i;
+	Dumb_String s;
 
-	size_t i = 0;
+	i = 0;
+	s = dumb_string_create_precise(arena, DUMB_DEFAULT_STRING_SIZE_BYTES);
 
 	while (str[i] != '\0')
 	{
-		dumb_string_push(arena, &s, (unsigned char)str[i]);
+		dumb_string_push(&s, (unsigned char)str[i]);
 		i++;
 	}
 	return s;
@@ -557,7 +569,7 @@ dumb_string_clear(Dumb_String *str)
 }
 
 void
-dumb_string_push(Dumb_Arena *arena, Dumb_String *str, unsigned char c)
+dumb_string_push(Dumb_String *str, unsigned char c)
 {
 /*
 	@NOTE(Honza): We do count + 1 because of compatibility with c-style
@@ -567,7 +579,7 @@ dumb_string_push(Dumb_Arena *arena, Dumb_String *str, unsigned char c)
 */
 	if ((str->_count + 1) == str->_capacity)
 	{
-		PRIVATE_dumb_string_change_capacity(arena, str, (str->_capacity * 2));
+		PRIVATE_dumb_string_change_capacity(str, (str->_capacity * 2));
 	}
 	str->_chars[str->_count] = c;
 	str->_count++;
@@ -592,7 +604,7 @@ dumb_string_pop(Dumb_String *str)
 }
 
 void
-dumb_string_append(Dumb_Arena *arena, Dumb_String *str_a, const char *str_b)
+dumb_string_append(Dumb_String *str_a, const char *str_b)
 {
 	size_t i = 0;
 
@@ -606,7 +618,7 @@ dumb_string_append(Dumb_Arena *arena, Dumb_String *str_a, const char *str_b)
 */
 		if ((str_a->_count + 1) == str_a->_capacity)
 		{
-			PRIVATE_dumb_string_change_capacity(arena, str_a, (str_a->_capacity * 2));
+			PRIVATE_dumb_string_change_capacity(str_a, (str_a->_capacity * 2));
 		}
 		str_a->_chars[str_a->_count] = (unsigned char)str_b[i];
 		str_a->_count++;
@@ -628,7 +640,6 @@ dumb_string_split_by_char(Dumb_Arena *arena, Dumb_String *str, unsigned char c)
 	result = dumb_array_create(arena, sizeof(Dumb_String));
 	buf    = dumb_string_create(arena);
 
-
 	for (i = 0; i < str->_count; i++)
 	{
 		current_char = str->_chars[i];
@@ -636,16 +647,16 @@ dumb_string_split_by_char(Dumb_Arena *arena, Dumb_String *str, unsigned char c)
 		if (current_char == c)
 		{
 			buf_2 = dumb_string_from(arena, (char *)buf._chars);
-			dumb_array_push(arena, &result, &buf_2);
+			dumb_array_push(&result, &buf_2);
 
 			buf = dumb_string_create(arena);
 		}
 		else
 		{
-			dumb_string_push(arena, &buf, current_char);
+			dumb_string_push(&buf, current_char);
 		}
 	}
-	dumb_array_push(arena, &result, &buf);
+	dumb_array_push(&result, &buf);
 
 	return result;
 }
@@ -712,9 +723,11 @@ dumb_string_compare(Dumb_String *str_a, Dumb_String *str_b)
 }
 
 void
-PRIVATE_dumb_string_change_capacity(Dumb_Arena *arena, Dumb_String *str, size_t new_capacity)
+PRIVATE_dumb_string_change_capacity(Dumb_String *str, size_t new_capacity)
 {
-	void *tmp = dumb_arena_push(arena, new_capacity);
+	void *tmp;
+
+	tmp = dumb_arena_push(str->_backing_storage, new_capacity);
 
 	DUMB_ASSERT(tmp != NULL)
 
