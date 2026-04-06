@@ -45,7 +45,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 // Generated default style for the GUI
 #include "gm_default_style.h"
 
-#include "timing.h"
+#include "gasoline_timing.h"
+#include "gasoline_audio.h"
 
 #define MIN_TEMPO 5
 #define MAX_TEMPO 500
@@ -55,6 +56,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 #define WINDOW_WIDTH_EXPANDED  WINDOW_WIDTH_NORMAL
 #define WINDOW_HEIGHT_EXPANDED 330
+
+#define SAMPLE_RATE 48000
+#define NUM_CHANNELS 1
 
 void playback(int *should_play, int *tempo);
 
@@ -75,6 +79,19 @@ playback(int *should_play, int *tempo)
 int
 main()
 {
+	// Audio init
+	Gasoline_Audio_Device audio_device;
+	Gasoline_Audio_Buffer audio_buffer;
+
+	Dumb_Arena *audio_arena = dumb_arena_create(0);
+
+	audio_buffer.buffer_size = SAMPLE_RATE * NUM_CHANNELS * 10; // @TODO(Honza): Figure out how much space we need.
+	audio_buffer.samples     = (float *)dumb_arena_push(audio_arena, (audio_buffer.buffer_size * sizeof(audio_buffer.samples)));
+	audio_buffer.current_index = 0;
+
+	gasoline_audio_init(&audio_device, &audio_buffer, SAMPLE_RATE, NUM_CHANNELS);
+
+	// RayGUI init
 	Color bg_color = GetColor(0x252525FF);
 
 	Rectangle beats_per_bar_minus_button   = { .x = 10,  .y = 10, .width = 40,  .height = 40 };
@@ -117,6 +134,8 @@ main()
 	// Detect window close button or ESC key
 	while (!WindowShouldClose())
 	{
+		gasoline_audio_change_tempo(&audio_buffer, tempo);
+
 		SetWindowSize(
 			(show_more ? WINDOW_WIDTH_EXPANDED : WINDOW_WIDTH_NORMAL),
 			(show_more ? WINDOW_HEIGHT_EXPANDED : WINDOW_HEIGHT_NORMAL)
@@ -200,6 +219,7 @@ main()
 
 		EndDrawing();
 	}
+	gasoline_audio_deinit(&audio_device);
 
 /*
 	From raylib.h v4.0:
