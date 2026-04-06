@@ -3,10 +3,6 @@
 I started developing it mainly for learning purposes.
 Also, I failed to find any desktop metronome that has the features I would like & actually works.
 
-Gasoline Metronome is (at least for now, subject to change) licensed under the MIT License.
-The same is true for dumb\_lib.
-RayLib, RayGui & RayAudio are licensed under zLib license.
-
 ## Building
 
 I'm currently developing on Windows, so that's the only build script for the moment.
@@ -32,6 +28,6 @@ I highly recommend using Epic's [RadDebugger](https://github.com/EpicGamesExt/ra
 
 + snake\_case. MY\_MACRO. My\_Struct.
 
-+ C99, but no VLAs.
++ C99, but [no VLAs](https://www.dependablec.org/#VLAs%20are%20broken).
 
 + Otherwise just look around the codebase.
