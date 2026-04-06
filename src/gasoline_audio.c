@@ -30,11 +30,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 
 */
 
+#include <stdio.h> // @TODO(Honza): For debug only! Remove!!!
 #include <stdint.h>
 #include <math.h>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "lib/miniaudio.h"
+
+#include "lib/dumb_lib.h"
 
 #include "gasoline_audio.h"
 
@@ -48,7 +51,7 @@ gasoline_audio_read_frames_from_buffer(Gasoline_Audio_Buffer *audio_buffer, void
 	float *samples = audio_buffer->samples;
 	size_t i       = audio_buffer->current_index;
 
-	memcpy(output, (void *)&samples[i], frame_count);
+	dumb_memcpy(output, (void *)&samples[i], frame_count);
 	audio_buffer->current_index += frame_count;
 }
 
@@ -116,8 +119,7 @@ gasoline_audio_init(Gasoline_Audio_Device *device, Gasoline_Audio_Buffer *audio_
 	{
 		return -1; // Failed to initialize the device.
 	}
-
-	ma_device_start(&device->device); // The device is sleeping by default so you'll need to start it manually.
+	ma_device_start(&device->device); // The device is sleeping by default so it needs to be started it manually.
 	return 0;
 }
 
