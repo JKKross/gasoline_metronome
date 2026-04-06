@@ -16,7 +16,7 @@ If you have Microsoft Visual Studio 2022 with C/C++ developer toolchain installe
 you should be able to just run [win\_debug\_build.bat](win_debug_build.bat) & find
 the executable in build/debug/windows.
 
-It is also recommended to have ripgrep installed - it is used in the script
+It is also recommended to have [ripgrep](https://github.com/BurntSushi/ripgrep) installed - it is used in the script
 to search for the @NO\_COMMIT tags in the comments.
 These tags are just a reminder to not commit some change I may forget about
 while working on something else (usually some loose printf).
@@ -31,5 +31,7 @@ I highly recommend using Epic's [RadDebugger](https://github.com/EpicGamesExt/ra
 + { always on newlines, except for single line if statements.
 
 + snake\_case. MY\_MACRO. My\_Struct.
+
++ C99, but no VLAs.
 
 + Otherwise just look around the codebase.
